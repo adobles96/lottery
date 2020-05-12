@@ -1,0 +1,32 @@
+version: "3"
+
+services:
+    api:
+        build:
+            context: .
+        ports:
+            - 8000:8000
+        volumes:
+            - ./api:/api # This way we get code updates immediately w/o having to rebuild the image.
+        # This command runs the dev server. NOT SUITABLE FOR PRODUCTION.
+        command: >
+            sh -c "python manage.py migrate &&
+            python manage.py runserver 0.0.0.0:8000"
+        environment: 
+            - DB_HOST=postgres
+            - DB_NAME=dev
+            - DB_USER=postgres
+            - DB_PASSWORD=devpassword
+        depends_on: 
+            - postgres
+
+    # Service strictly for dev purposes. NOT A PRODUCTION DB.
+    postgres:
+        image: postgres/11-alpine
+        environment:
+            - POSTGRES_DB=dev
+            - POSTGRES_USER=postgres
+            # In production, you don't want to explicitly write out your password here.
+            # What you would do is have your build server/service (eg Jenkins, TravisCI) add an
+            # encrypted env variable that overwrites the var below at build time.
+            - POSTGRES_PASSWORD=devpassword
