@@ -25,6 +25,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # third-party
+    'rest_framework',
+    'phonenumber_field',
+
+    # local
+    'core.apps.CoreConfig',
 ]
 
 MIDDLEWARE = [
@@ -80,9 +87,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en-us'  # TODO change
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'UTC'  # TODO change
 
 USE_I18N = True
 
@@ -95,3 +102,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
 STATIC_URL = '/static/'
+
+
+# Local settings
+HOURS_THRESHOLD = 2  # we'll stop selling tickets HOURS_THRESHOLD hours before a contest
