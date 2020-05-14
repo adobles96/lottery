@@ -17,6 +17,7 @@ services:
             - DB_NAME=dev
             - DB_USER=postgres
             - DB_PASSWORD=devpassword
+            - DJANGO_SETTINGS_MODULE=api.settings.dev
         depends_on: 
             - postgres
 

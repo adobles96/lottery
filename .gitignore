@@ -2,3 +2,5 @@ __pycache__
 .DS_Store
 .vscode
 chat.py
+development_notes.md
+migrations
