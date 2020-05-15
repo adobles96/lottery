@@ -13,7 +13,7 @@ SECRET_KEY = 'd+9xgdki%+n%ri%pkjowdn9ybbvof_%g-1r6vo-9@$ox@jyl86'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '0.0.0.0']
+ALLOWED_HOSTS = ['localhost', '0.0.0.0', 'loteria-cr.herokuapp.com']
 
 # Database
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
