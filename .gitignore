@@ -4,3 +4,4 @@ __pycache__
 chat.py
 development_notes.md
 migrations
+db.sqlite3
