@@ -106,3 +106,4 @@ STATIC_URL = '/static/'
 
 # Local settings
 HOURS_THRESHOLD = 2  # we'll stop selling tickets HOURS_THRESHOLD hours before a contest
+RESERVATION_THRESHOLD = 60*5  # The time (in seconds) we'll hold a ticket reserved

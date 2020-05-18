@@ -17,7 +17,7 @@ class ContestManager(models.Manager):
         """ Retrieves active contests (ie contests that are still selling tickets). More efficient
         than calling Contest.objects.filter(is_active=True).
         """
-        cutoff = timezone.now() + datetime.timedelta(hours=settings.HOURS_TRESHOLD)
+        cutoff = timezone.now() + datetime.timedelta(hours=settings.HOURS_THRESHOLD)
         return self.filter(draw_date__gt=cutoff)
 
 
@@ -26,8 +26,11 @@ class Contest(models.Model):
     name = models.CharField(max_length=255)
     draw_date = models.DateTimeField()
     prize_pool = models.IntegerField()  # in colones
+    price_per_ticket = models.IntegerField()  # in colones
     regex = models.CharField(max_length=255)
-    example_number = models.CharField(max_length=255)  # an example of a valid ticket number
+    example_number = models.CharField(max_length=255, blank=True)  # an eg of a valid ticket number
+
+    objects = ContestManager()
 
     @property
     def is_active(self):
@@ -54,6 +57,10 @@ class Contest(models.Model):
             return False
         return True
 
+    def __str__(self):
+        draw_date = self.draw_date.date().strftime('%d-%m-%Y')
+        return f"{self.name} ({draw_date})"
+
 
 class Ticket(models.Model):
     """ Represents a ticket that has been sold/purchased """
@@ -67,6 +74,9 @@ class Ticket(models.Model):
         if re.match(self.contest.regex, self.number):
             return True
         return False
+
+    def __str__(self):
+        return f'{self.contest}: {self.number}'
 
 # class WinningNumber(models.Model):
 #    contest = models.ForeignKey(Contest, on_delete=models.CASCADE, related_name='winning_numbers')

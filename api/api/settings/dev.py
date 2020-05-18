@@ -31,3 +31,10 @@ DATABASES = {
     #     'PASSWORD': os.environ.get('DB_PASSWORD'),
     # }
 }
+
+CACHES = {  # run this to create the cache table: 'python manage.py createcachetable'
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'reserved_tickets',
+    }
+}
