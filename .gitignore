@@ -3,7 +3,6 @@ __pycache__
 .vscode
 chat.py
 development_notes.md
-migrations
 db.sqlite3
 gcloud_dialogflow_dev_service_account.json
 .env

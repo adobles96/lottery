@@ -4,9 +4,18 @@ import re
 import datetime
 
 from django.conf import settings
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
+
+
+class User(AbstractUser):
+    """ Custom user model. Empty for now. It is a best practice to define a custom user model in
+    case modifications need to be made in the future. Going from the default user model to a custom
+    user model after the initial migration requires deleting all migrations and manually copying
+    over the data in the db. """
+    pass
 
 
 class ContestManager(models.Manager):
