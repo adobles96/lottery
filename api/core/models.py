@@ -32,11 +32,17 @@ class Contest(models.Model):
 
     objects = ContestManager()
 
-    @property
-    def is_active(self):
+    def is_active(self) -> bool:
         """ Whether the contest is active (ie hasn't been drawn yet) """
         cutoff = timezone.now() + datetime.timedelta(hours=settings.HOURS_THRESHOLD)
         return self.draw_date > cutoff
+    # admin related
+    is_active.admin_order_field = 'draw_date'
+    is_active.boolean = True
+
+    def num_tickets_sold(self) -> int:
+        """ Returns the number of tickets that have been sold for this contest """
+        return self.tickets_sold.count()
 
     def number_is_available(self, number: str) -> bool:
         """ Checks if the provided number is available for purchase
