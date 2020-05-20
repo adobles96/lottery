@@ -12,10 +12,11 @@ from rest_framework.response import Response
 
 from core.models import Ticket, Contest
 
-# Actions
+
 LIST_TICKETS = 'list_tickets'
 INITIATE_PURCHASE = 'purchase_ticket'
 CONFIRM_PURCHASE = 'confirm_purchase.yes'
+PHONE_NUMBER_REGEX = r'\+[0-9]{6, 15}'  # determines which phone numbers are eligible to buy lottery
 
 
 @api_view(['POST'])
@@ -57,8 +58,7 @@ def initiate_purchase(request):
     user for correction. The method also returns a dictionary holding the validated parameters.
     """
     # validate phone number
-    phone_number = get_phone_number(request)
-    if not validate_phone_number(phone_number):
+    if (phone_number := get_phone_number(request)) is None:
         return text_response('Lo sentimos pero tu número de celular no califica para hacer compras \
             de lotería.')
 
@@ -137,7 +137,7 @@ def confirm_purchase(request):
         ticket_available = contest.number_is_available(ticket_number)
     except ValueError:
         return text_response(f'El número no está en el formato correcto. Escribí el número que'
-                            f'querés en este formato: {contest.example_number}')
+                             f'querés en este formato: {contest.example_number}')
     if not ticket_available:
         return text_response('Desafortunadamente, el tiquete que querés no está disponible 😢')
     # check the cache
@@ -175,17 +175,10 @@ def confirm_purchase(request):
 # utility functions
 
 def get_phone_number(request):
-    """ Extracts the user's phone number from the dialogflow session id """
-    session = request.data["session"]
-    return session.split('/')[-1]  # this extracts the session id, which is the phone number
-
-
-def validate_phone_number(phone_number):
-    """ Validates that the user's phone number is valid (ie that it is a Costa Rican phone number)
-    """
-    if re.match(r'\+506([0-9]{8})', phone_number):
-        return True
-    return False
+    """ Extracts and validates the user's phone number from the request """
+    string = request.data['originalDetectIntentRequest']['data']['from']
+    if match := re.search(PHONE_NUMBER_REGEX, string):
+        return match.group()
 
 
 def text_response(text):
