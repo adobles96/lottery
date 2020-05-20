@@ -7,3 +7,4 @@ migrations
 db.sqlite3
 gcloud_dialogflow_dev_service_account.json
 .env
+staticfiles
