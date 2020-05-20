@@ -38,3 +38,5 @@ CACHES = {  # run this to create the cache table: 'python manage.py createcachet
         'LOCATION': 'reserved_tickets',
     }
 }
+
+DIALOGFLOW_PROJECT_ID = 'newagent-lyssbi'  # use dev chatbot here
