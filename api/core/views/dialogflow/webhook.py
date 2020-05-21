@@ -16,6 +16,7 @@ from core.models import Ticket, Contest
 LIST_TICKETS = 'list_tickets'
 INITIATE_PURCHASE = 'purchase_ticket'
 CONFIRM_PURCHASE = 'confirm_purchase.yes'
+TICKET_UNAVAILABLE = 'ticket_unavailable'
 PHONE_NUMBER_REGEX = r'\+[0-9]{6,15}'  # determines which phone numbers are eligible to buy lottery
 
 
@@ -37,6 +38,8 @@ def webhook(request):
         return initiate_purchase(request)
     if action == CONFIRM_PURCHASE:
         return confirm_purchase(request)
+    if action == TICKET_UNAVAILABLE:
+        return ticket_unavailable(request)
     logger.error('Dialogflow action "%s" not recognized', action)
     return Response(f'Action "{action}" not recognized', status=status.HTTP_400_BAD_REQUEST)
 
@@ -95,12 +98,12 @@ def initiate_purchase(request):
         if ticket_available:
             # reserved by another user
             cache_hit = cache.get(get_cache_key(ticket_number, contest))
-            if  cache_hit is not None and cache_hit != phone_number:
-                return text_response('Desafortunadamente, el tiquete que querés está reservado'
-                                     'por otro usuario. Intentá de nuevo en 15 mins. para ver si se'
-                                     'liberó.')
+            if cache_hit is not None and cache_hit != phone_number:
+                return text_response('Desafortunadamente, el tiquete que querés está reservado '
+                                     'por otro usuario. Intentá de nuevo en 15 mins. para ver si '
+                                     'se liberó.')
         else:
-            return text_response('Desafortunadamente, el tiquete que querés no está disponible 😢')
+            return event_trigger_response('ticket_unavailable', {'contest': contest_id})
     else:
         return text_response(f'¿Qué número te gustaría comprar? En este sorteo los números tienen '
                              f'el siguiente formato {contest.example_number}, y cuestan '
@@ -110,23 +113,58 @@ def initiate_purchase(request):
     # reserve number on cache
     cache.set(get_cache_key(ticket_number, contest), phone_number,
               timeout=settings.RESERVATION_THRESHOLD)
-    # prompt user for confirmation & trigger confirmation event
-    message = f'¿Deseas confirmar la compra del numero "{ticket_number}" por '\
-              f'₡{contest.price_per_ticket} para el sorteo "{contest}"? Te lo cobraríamos a tu '\
-              f'cuenta de celular.'
-    return Response(data={
-        "followupEventInput": {
-            "fulfillmentText": message,
-            "name": "confirm_purchase",
-            "languageCode": "es",
-            "parameters": {
-                "phone_number": phone_number,  # may not need it
-                "contest": contest_id,
-                "ticket_number": ticket_number,
-            }
-        }
-    }, status=status.HTTP_200_OK)
 
+    params = {
+        "phone_number": phone_number,  # may not need it
+        "contest": contest_id,
+        "contest-name": contest.name,
+        "price": contest.price_per_ticket,
+        "ticket_number": ticket_number,
+    }
+    return event_trigger_response('confirm_purchase', params)
+
+
+def ticket_unavailable(request):
+    """ Responds to a retry if the first number tried by the user was unavailable """
+    # TODO cut out repeated code
+    params = request.data['queryResult']['parameters']
+    phone_number = get_phone_number(request)
+    contest_id = params['contest']
+    contest = Contest.objects.get_active_contests().get(id=contest_id)
+    ticket_number = params.get('ticket_number')
+    if ticket_number:
+        try:
+            ticket_available = contest.number_is_available(ticket_number)
+        except ValueError:
+            return text_response(f'El número no está en el formato correcto. Escribí el número que'
+                                 f'querés en este formato: {contest.example_number}')
+        if ticket_available:
+            # reserved by another user
+            cache_hit = cache.get(get_cache_key(ticket_number, contest))
+            if cache_hit is not None and cache_hit != phone_number:
+                return text_response('Desafortunadamente, el tiquete que querés está reservado '
+                                     'por otro usuario. Intentá de nuevo en 15 mins. para ver si '
+                                     'se liberó.')
+        else:
+            return event_trigger_response('ticket_unavailable', {'contest': contest.id})
+    else:
+        return text_response(f'¿Qué número te gustaría comprar? En este sorteo los números tienen '
+                             f'el siguiente formato {contest.example_number}, y cuestan '
+                             f'₡{contest.price_per_ticket} cada uno')
+
+    # All parameters are validated
+    # reserve number on cache
+    cache.set(get_cache_key(ticket_number, contest), phone_number,
+              timeout=settings.RESERVATION_THRESHOLD)
+
+    params = {
+        "phone_number": phone_number,  # may not need it
+        "contest": contest.id,
+        "contest-name": contest.name,
+        "price": contest.price_per_ticket,
+        "ticket_number": ticket_number,
+    }
+    return event_trigger_response('confirm_purchase', params)
 
 def confirm_purchase(request):
     """ Confirms purchase of a ticket """
@@ -142,12 +180,12 @@ def confirm_purchase(request):
         return text_response(f'El número no está en el formato correcto. Escribí el número que'
                              f'querés en este formato: {contest.example_number}')
     if not ticket_available:
-        return text_response('Desafortunadamente, el tiquete que querés no está disponible 😢')
+        return text_response('Desafortunadamente, el tiquete que querés ya no está disponible 😢')
     # check the cache
     cache_hit = cache.get(get_cache_key(ticket_number, contest))
     if  cache_hit is not None and cache_hit != phone_number:
-        return text_response('Desafortunadamente, el tiquete que querés está reservado'
-                             'por otro usuario. Intentá de nuevo en 15 mins. para ver si se'
+        return text_response('Desafortunadamente, el tiquete que querés está reservado '
+                             'por otro usuario. Intentá de nuevo en 15 mins. para ver si se '
                              'liberó.')
     # set cache again in case the reservation had expired
     cache.set(get_cache_key(ticket_number, contest), phone_number,
@@ -184,7 +222,7 @@ def get_phone_number(request):
         return match.group()
 
 
-def text_response(text):
+def text_response(text: str) -> Response:
     """ Wraps a message in a Response object with the appropriate format """
     data = {
         'fulfillmentText': text
@@ -192,6 +230,18 @@ def text_response(text):
     return Response(data=data, status=status.HTTP_200_OK)
 
 
-def get_cache_key(ticket_number, contest):
+def event_trigger_response(event: str, params: dict) -> Response:
+    return Response(data={
+        # trigger confirmation intent
+        "followupEventInput": {
+            "name": event,
+            "languageCode": "es",
+            # this info will be used to prompt user for confirmation
+            "parameters": params
+        }
+    }, status=status.HTTP_200_OK)
+
+
+def get_cache_key(ticket_number: str, contest: Contest) -> str:
     """ Gives a unique string to identify a ticket in the cache """
     return f'{contest.id}--{ticket_number}'
