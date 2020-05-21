@@ -16,7 +16,7 @@ from core.models import Ticket, Contest
 LIST_TICKETS = 'list_tickets'
 INITIATE_PURCHASE = 'purchase_ticket'
 CONFIRM_PURCHASE = 'confirm_purchase.yes'
-PHONE_NUMBER_REGEX = r'\+[0-9]{6, 15}'  # determines which phone numbers are eligible to buy lottery
+PHONE_NUMBER_REGEX = r'\+[0-9]{6,15}'  # determines which phone numbers are eligible to buy lottery
 
 
 @api_view(['POST'])
@@ -45,11 +45,11 @@ def list_tickets(phone_number):
         message = ""
         for t in tickets:
             if t.contest.is_active:
-                message += f"    🎟 Serie {t.number} para {t.contest}\n"
+                message += f'    🎟 Serie {t.number} para {t.contest}\n'
         if message:
             message.strip()
-            return text_response("Tenes los siguientes numeros:\n" + message)
-    return text_response("Todavía no has comprado tiquetes para los siguientes sorteos.")
+            return text_response('Tenes los siguientes numeros:\n' + message)
+    return text_response('Todavía no has comprado tiquetes para los próximos sorteos.')
 
 
 def initiate_purchase(request):
@@ -59,8 +59,8 @@ def initiate_purchase(request):
     """
     # validate phone number
     if (phone_number := get_phone_number(request)) is None:
-        return text_response('Lo sentimos pero tu número de celular no califica para hacer compras \
-            de lotería.')
+        return text_response('Lo sentimos pero tu número de celular no califica para hacer compras'
+                             'de lotería.')
 
     params = request.data['queryResult']['parameters']
 
