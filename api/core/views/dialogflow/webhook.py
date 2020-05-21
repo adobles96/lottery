@@ -16,7 +16,7 @@ from core.models import Ticket, Contest
 LIST_TICKETS = 'list_tickets'
 INITIATE_PURCHASE = 'purchase_ticket'
 CONFIRM_PURCHASE = 'confirm_purchase.yes'
-TICKET_UNAVAILABLE = 'ticket_unavailable'
+TICKET_UNAVAILABLE_RETRY = 'ticket_unavailable.retry'
 PHONE_NUMBER_REGEX = r'\+[0-9]{6,15}'  # determines which phone numbers are eligible to buy lottery
 
 
@@ -38,8 +38,8 @@ def webhook(request):
         return initiate_purchase(request)
     if action == CONFIRM_PURCHASE:
         return confirm_purchase(request)
-    if action == TICKET_UNAVAILABLE:
-        return ticket_unavailable(request)
+    if action == TICKET_UNAVAILABLE_RETRY:
+        return ticket_unavailable_retry(request)
     logger.error('Dialogflow action "%s" not recognized', action)
     return Response(f'Action "{action}" not recognized', status=status.HTTP_400_BAD_REQUEST)
 
@@ -82,7 +82,7 @@ def initiate_purchase(request):
         if contests.exists():
             message = 'En cual sorteo estás interesado? Las opciones son:\n'
             for c in Contest.objects.get_active_contests():
-                message += f'    • {c}: por un premio de ₡{c.prize_pool}'
+                message += f'    • {c}: por un premio de ₡{c.prize_pool}\n'
             return text_response(message)
         else:
             return text_response('Desafortunadamente, no hay sorteos disponibles en este momento.')
@@ -124,7 +124,7 @@ def initiate_purchase(request):
     return event_trigger_response('confirm_purchase', params)
 
 
-def ticket_unavailable(request):
+def ticket_unavailable_retry(request):
     """ Responds to a retry if the first number tried by the user was unavailable """
     # TODO cut out repeated code
     params = request.data['queryResult']['parameters']
