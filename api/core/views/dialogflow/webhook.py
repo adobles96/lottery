@@ -19,13 +19,16 @@ CONFIRM_PURCHASE = 'confirm_purchase.yes'
 PHONE_NUMBER_REGEX = r'\+[0-9]{6,15}'  # determines which phone numbers are eligible to buy lottery
 
 
+logger = logging.getLogger('testlogger')  # this is the logger defined by django-heroku
+
+
 @api_view(['POST'])
 def webhook(request):
     """ This method handles HTTP requests for the Dialogflow webhook """
     try:
         action = request.data.get('queryResult').get('action')
     except AttributeError:
-        logging.error('AttributeError encountered when trying to extract action from request')
+        logger.error('AttributeError encountered when trying to extract action from request')
         return Response('Action not found in the request', status=status.HTTP_400_BAD_REQUEST)
     phone_number = get_phone_number(request)
     if action == LIST_TICKETS:
@@ -34,7 +37,7 @@ def webhook(request):
         return initiate_purchase(request)
     if action == CONFIRM_PURCHASE:
         return confirm_purchase(request)
-    logging.error('Dialogflow action "%s" not recognized', action)
+    logger.error('Dialogflow action "%s" not recognized', action)
     return Response(f'Action "{action}" not recognized', status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -99,7 +102,7 @@ def initiate_purchase(request):
         else:
             return text_response('Desafortunadamente, el tiquete que querés no está disponible 😢')
     else:
-        return text_response(f'¿Qué número te gustaría comprar? En este sorteo los números tienen'
+        return text_response(f'¿Qué número te gustaría comprar? En este sorteo los números tienen '
                              f'el siguiente formato {contest.example_number}, y cuestan '
                              f'₡{contest.price_per_ticket} cada uno')
 
@@ -112,8 +115,8 @@ def initiate_purchase(request):
               f'₡{contest.price_per_ticket} para el sorteo "{contest}"? Te lo cobraríamos a tu '\
               f'cuenta de celular.'
     return Response(data={
-        "fulfillmentText": message,
         "followupEventInput": {
+            "fulfillmentText": message,
             "name": "confirm_purchase",
             "languageCode": "es",
             "parameters": {
@@ -158,7 +161,7 @@ def confirm_purchase(request):
         try:
             Ticket.objects.create(contest=contest, number=ticket_number, phone_number=phone_number)
         except IntegrityError:
-            logging.critical('Failed to create ticket %s (contest %s) for user %s who already paid',
+            logger.critical('Failed to create ticket %s (contest %s) for user %s who already paid',
                              ticket_number, str(contest), phone_number)
             # TODO add slack notif
             return text_response('Hubo un error reservando tu numero. Estamos investigandolo y te'\
@@ -166,7 +169,7 @@ def confirm_purchase(request):
         message = f'Listo! Tu compra del compra del numero "{ticket_number}" para el sorteo '\
                   f'{contest}" fue exitosa. Buena suerte! 🍀'
     else:  # TODO identify failure reason and notify slack if it was a system issue
-        logging.info('Payment failed for phone number %s', phone_number)
+        logger.info('Payment failed for phone number %s', phone_number)
         message = 'Desafortunadamente, hubo un problema procesando el pago. Por favor intenta más'\
                   'tarde.'
     return text_response(message)
