@@ -176,7 +176,7 @@ def confirm_purchase(request):
 
 def get_phone_number(request):
     """ Extracts and validates the user's phone number from the request """
-    string = request.data['originalDetectIntentRequest']['data']['from']
+    string = request.data['originalDetectIntentRequest']['payload']['data']['From']
     if match := re.search(PHONE_NUMBER_REGEX, string):
         return match.group()
 
